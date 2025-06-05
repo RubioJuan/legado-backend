@@ -1,0 +1,17 @@
+export type PositionOfUser =
+  | "goalScorer"
+  | "creator1"
+  | "creator2"
+  | "generator1"
+  | "generator2"
+  | "generator3"
+  | "generator4"
+  | "defender1"
+  | "defender2"
+  | "defender3"
+  | "defender4"
+  | "defender5"
+  | "defender6"
+  | "defender7"
+  | "defender8"
+  | null;
