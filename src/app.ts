@@ -29,12 +29,17 @@ app.use(express.json());
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
-// Ruta de prueba para Render
+// Ruta base
 app.get('/', (req, res) => {
   res.send('API funcionando correctamente 🚀');
 });
 
-// Rutas
+// Ruta de salud para Render
+app.get('/healthz', (_req, res) => {
+  res.sendStatus(200);
+});
+
+// Rutas API
 app.use("/api", subscriptionRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api", boardRoutes);
@@ -42,5 +47,4 @@ app.use("/api/admin", adminRoutes);
 app.use("/api", playerRoutes);
 app.use("/api/users", userRoutes);
 
-// Exportación para index.ts
 export default app;
