@@ -1,12 +1,12 @@
 {
-  "name": "legancy-backend",
+  "name": "legado-backend",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/app.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn src/index.ts",
+    "dev": "ts-node-dev --respawn src/app.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node dist/app.js",
     "typeorm": "typeorm-ts-node-commonjs -d ./src/config/db.ts",
     "m:gen": "npm run typeorm migration:generate",
     "m:run": "npm run typeorm migration:run",
