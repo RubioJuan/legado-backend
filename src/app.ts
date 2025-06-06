@@ -18,7 +18,11 @@ const app = express();
 
 // CORS Configuration
 const corsOptions = {
-  origin: ['http://127.0.0.1:5501', 'http://localhost:5501'],
+  origin: [
+    'http://127.0.0.1:5501',
+    'http://localhost:5501',
+    'https://misiondonacion.com'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
