@@ -42,8 +42,5 @@ app.use("/api/admin", adminRoutes);
 app.use("/api", playerRoutes);
 app.use("/api/users", userRoutes);
 
-// 🔊 Escuchar el puerto asignado por Render
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en el puerto ${PORT}`);
-});
+// Exportación para index.ts
+export default app;
