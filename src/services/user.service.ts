@@ -20,21 +20,21 @@ import { AppDataSource } from "../config/db";
 import { ServiceResponse } from "../interfaces/admin.request.interface";
 import { encrypt, verified } from "../utils/bcrypt.handle";
 import {
-    getPositionAvailable,
-    getPositionsAvailables,
+  getPositionAvailable,
+  getPositionsAvailables,
 } from "../utils/getPositionAvailable";
 import { getPositionOfUser } from "../utils/getPositionOfUser";
 import { getDefendersValidatingAndValidated } from "../utils/getValidatingAndValidated";
 import { generateToken } from "../utils/jwt.handle";
 import {
-    closeBoardFinal,
-    getBoardWaitingOfCaptain,
-    getPositionBasedOnAssosiation,
-    modifyBoardById,
+  closeBoardFinal,
+  getBoardWaitingOfCaptain,
+  getPositionBasedOnAssosiation,
+  modifyBoardById,
 } from "./board.service";
 import {
-    notificatePushCloseBoard,
-    notificatePushSendBall,
+  notificatePushCloseBoard,
+  notificatePushSendBall,
 } from "./notificationsPush.onesignal.service";
 
 // Types
@@ -2344,7 +2344,6 @@ const validatePaymentMethods = (paymentMethods: any[]): { valid: boolean; error?
           return { valid: false, error: "Nequi debe ser un número de teléfono válido (ej: 3001234567)" };
         }
         break;
-        
       case 'bancolombia':
         // Validar que tenga número de cuenta y tipo de cuenta
         if (!method.accountType) {
@@ -2358,7 +2357,6 @@ const validatePaymentMethods = (paymentMethods: any[]): { valid: boolean; error?
           return { valid: false, error: "Número de cuenta Bancolombia debe tener entre 8-12 dígitos" };
         }
         break;
-        
       case 'daviplata':
         // Validar que sea un número de teléfono
         const daviPhoneRegex = /^[3][0-9]{9}$/;
@@ -2366,7 +2364,12 @@ const validatePaymentMethods = (paymentMethods: any[]): { valid: boolean; error?
           return { valid: false, error: "Daviplata debe ser un número de teléfono válido (ej: 3001234567)" };
         }
         break;
-        
+      case 'binance':
+        // Validar que sea un string de al menos 5 caracteres (puede ser correo o ID de usuario)
+        if (typeof method.value !== 'string' || method.value.trim().length < 5) {
+          return { valid: false, error: "Binance debe ser un correo o ID de usuario válido (mínimo 5 caracteres)" };
+        }
+        break;
       default:
         // Para otros tipos, solo validar que tengan valor
         if (method.value.length < 3) {

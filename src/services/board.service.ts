@@ -1,15 +1,15 @@
 // Type
 import {
-    Equal,
-    In,
-    IsNull,
-    Not,
-    QueryRunner
+  Equal,
+  In,
+  IsNull,
+  Not,
+  QueryRunner
 } from "typeorm";
 import { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 import {
-    GetVerifyBoardMock,
-    GetVerifyGoalScorerMock
+  GetVerifyBoardMock,
+  GetVerifyGoalScorerMock
 } from "../interfaces/mock.interface";
 import { BoardLevel, BoardLevelNumericId, BoardStateNumericId, UserProcessStateId } from "../types/enums.types";
 
@@ -18,10 +18,10 @@ import { AppDataSource } from "../config/db";
 
 //Interfaces
 import {
-    AssignPlayerRequest,
-    FormUpdatePlayer,
-    ServiceResponse,
-    UpdatePlayerRequest,
+  AssignPlayerRequest,
+  FormUpdatePlayer,
+  ServiceResponse,
+  UpdatePlayerRequest,
 } from "../interfaces/admin.request.interface";
 import { BoardExt } from "../interfaces/board.interface";
 import { LoginUserData, User } from "../interfaces/user.interface";
@@ -38,26 +38,26 @@ import { EntityUser } from "../entities/user.entity";
 import { encrypt } from "../utils/bcrypt.handle";
 import { cleanBoardToGetBoardById } from "../utils/cleanBoardToGetBoardById";
 import {
-    getPositionAvailable,
-    getPositionsAvailables,
+  getPositionAvailable,
+  getPositionsAvailables,
 } from "../utils/getPositionAvailable";
 import { getUserDataInfo } from "../utils/getUserDataInfo";
 
 //Services
 import {
-    cleanBoardToVerificatePlayer
+  cleanBoardToVerificatePlayer
 } from "../utils/cleanBoardToVerifyById";
 import { notificatePushGotOutTail } from "./notificationsPush.onesignal.service";
 import { playerVerify } from "./playerVerify.service";
 import { notificateGotOutTail } from "./sms.twilio.service";
 import {
-    eraseUserTailByIdTail,
-    getUserTailToInsertOnNewBoard,
+  eraseUserTailByIdTail,
+  getUserTailToInsertOnNewBoard,
 } from "./tail.service";
 import {
-    modifyAssosiationsOfUser,
-    modifyUserById,
-    readUserByUsername
+  modifyAssosiationsOfUser,
+  modifyUserById,
+  readUserByUsername
 } from "./user.service";
 
 // Define the return type alias
@@ -2580,24 +2580,17 @@ export const splitBoardAndPromotePlayers = async (
     console.log(`[Service - splitBoardAndPromotePlayers] Found ${promotableGoalScorers.length} promotable GoalScorers from Level ${previousLevelId}.`);
 
     let promotedIndex = 0;
+    // --- INICIO CAMBIO: Controlar duplicados de reclutas ---
+    const assignedUserIds = new Set<number>();
 
-    // Helper function to assign a promoted user to a new board/position
+    // Mueve aquí la función assignPromotedUser para que tenga acceso a las variables:
     const assignPromotedUser = async (user: EntityUser, boardId: number, position: keyof Board) => {
-        // Check if user is an admin (only if idRole = 1)
         const isAdminUser = user.idRole === 1;
         if (isAdminUser) {
-            console.log(`[Service - splitBoardAndPromotePlayers] User ${user.id} is an ADMIN (idRole = 1). Skipping assignment as recruit/defender.`);
-            
-            // Find the user's original board at previousLevelId to clear their spot
             const originalBoard = boardsAtPreviousLevel.find(b => b.idGoalScorer === user.id);
-            
-            // Clear user from GoalScorer spot on their old board (level N-1)
             if (originalBoard) {
                 await queryRunner.manager.update(Board, originalBoard.id, { idGoalScorer: null });
-                console.log(`[Service - splitBoardAndPromotePlayers] Cleared GS position for admin user ${user.id} from board ${originalBoard.id} (Level ${previousLevelId})`);
             }
-            
-            // Set admin user to have verification rights but no secondary role
             await queryRunner.manager.update(EntityUser, user.id, { 
                 idUserProcessState: 4, // VALIDATED
                 canVerifyRecruits: true,
@@ -2605,86 +2598,63 @@ export const splitBoardAndPromotePlayers = async (
                 secondaryBoardLevelIdAsRecruit: null,
                 secondaryPositionAsRecruit: null
             });
-            
-            return; // Skip the rest of the assignment process for admins
+            return;
         }
-        
-        console.log(`[Service - splitBoardAndPromotePlayers] Assigning promoted GS ${user.id} (from level ${previousLevelId}) to ${position as string} on board ${boardId} (Level ${levelId})`);
-
-        // Find the user's original board at previousLevelId to clear their spot
         const originalBoard = boardsAtPreviousLevel.find(b => b.idGoalScorer === user.id);
-
-        // Update the new board (level N) with the user ID
         await queryRunner.manager.update(Board, boardId, { [position]: user.id });
-
-        // Update user state to RECRUIT (2)
         await queryRunner.manager.update(EntityUser, user.id, { idUserProcessState: 2 });
-
-        // Update subscription to point to the new board (level N) and set state to ACTIVE (1)
-        // ✅ FIX: For dual-role users, update subscription from their CURRENT secondary board, not original board
         const userDataForSubscription = await queryRunner.manager.findOne(EntityUser, { where: { id: user.id } });
-        
         if (userDataForSubscription && userDataForSubscription.secondaryBoardIdAsRecruit) {
-            // This is a dual-role user - update subscription from their CURRENT secondary board
-            console.log(`[Service - splitBoardAndPromotePlayers] DUAL USER: Updating subscription from current secondary board ${userDataForSubscription.secondaryBoardIdAsRecruit} to new board ${boardId}`);
             await queryRunner.manager.update(Subscription, { idUser: user.id, idBoard: userDataForSubscription.secondaryBoardIdAsRecruit }, { idBoard: boardId, idSubscriptionState: 1 });
         } else if (originalBoard) {
-            // Regular user - update subscription from their original board
-            console.log(`[Service - splitBoardAndPromotePlayers] REGULAR USER: Updating subscription from original board ${originalBoard.id} to new board ${boardId}`);
             await queryRunner.manager.update(Subscription, { idUser: user.id, idBoard: originalBoard.id }, { idBoard: boardId, idSubscriptionState: 1 });
         } else {
-            // Fallback: if we can't identify the source board, update any subscription to this level
-            console.log(`[Service - splitBoardAndPromotePlayers] FALLBACK: Updating any subscription to board ${boardId}`);
-        await queryRunner.manager.update(Subscription, { idUser: user.id }, { idBoard: boardId, idSubscriptionState: 1 });
+            await queryRunner.manager.update(Subscription, { idUser: user.id }, { idBoard: boardId, idSubscriptionState: 1 });
         }
-
-        // Clear user from GoalScorer spot on their old board (level N-1)
         if (originalBoard) {
             await queryRunner.manager.update(Board, originalBoard.id, { idGoalScorer: null });
-            console.log(`[Service - splitBoardAndPromotePlayers] Cleared GS position for user ${user.id} from board ${originalBoard.id} (Level ${previousLevelId})`);
-        } else {
-            // This case should ideally not happen if the user was found correctly
-            console.warn(`[Service - splitBoardAndPromotePlayers] Could not find original board for user ${user.id} at level ${previousLevelId} to clear GS spot.`);
         }
-
-        // ✅ NUEVA LÓGICA: Verificar si el usuario tiene rol dual y actualizar su posición secundaria
         const currentUserData = await queryRunner.manager.findOne(EntityUser, { where: { id: user.id } });
         if (currentUserData && 
             currentUserData.secondaryBoardIdAsRecruit === boardId && 
             currentUserData.secondaryBoardLevelIdAsRecruit === levelId) {
-            
-            console.log(`[Service - splitBoardAndPromotePlayers] DUAL ROLE UPDATE: User ${user.id} has dual role on board ${boardId}. Updating secondaryPositionAsRecruit from '${currentUserData.secondaryPositionAsRecruit}' to '${position as string}'`);
-            
-            // Actualizar la posición secundaria para mantener el seguimiento del usuario dual
             await queryRunner.manager.update(EntityUser, user.id, { 
                 secondaryPositionAsRecruit: position as string 
             });
         }
     };
 
-    // 2. Assign promotable GoalScorers to Defender slots in Board A
+    // 2. Asignar GoalScorers promovidos a Defender slots en Board A
     for (const pos of defenderPositions) {
-        if (promotedIndex >= promotableGoalScorers.length) break; // Stop if no more users to promote
-        const boardA = await queryRunner.manager.findOne(Board, { where: { id: savedNewBoardA.id }}); // Re-fetch board A to check current state
-        // Check if the position is actually null before assigning
-        if (boardA && (boardA as any)[pos] === null) { 
-            const user = promotableGoalScorers[promotedIndex];
+        if (promotedIndex >= promotableGoalScorers.length) break;
+        const user = promotableGoalScorers[promotedIndex];
+        if (assignedUserIds.has(user.id)) {
+            promotedIndex++;
+            continue; // Ya fue asignado
+        }
+        const boardA = await queryRunner.manager.findOne(Board, { where: { id: savedNewBoardA.id }});
+        if (boardA && (boardA as any)[pos] === null) {
             await assignPromotedUser(user, savedNewBoardA.id, pos);
-            promotedIndex++; // Move to the next promotable user
+            assignedUserIds.add(user.id);
+            promotedIndex++;
         }
     }
-
-    // 3. Assign remaining promotable GoalScorers to Defender slots in Board B
+    // 3. Asignar GoalScorers restantes a Defender slots en Board B
     for (const pos of defenderPositions) {
-        if (promotedIndex >= promotableGoalScorers.length) break; // Stop if no more users to promote
-        const boardB = await queryRunner.manager.findOne(Board, { where: { id: savedNewBoardB.id }}); // Re-fetch board B to check current state
-        // Check if the position is actually null before assigning
+        if (promotedIndex >= promotableGoalScorers.length) break;
+        const user = promotableGoalScorers[promotedIndex];
+        if (assignedUserIds.has(user.id)) {
+            promotedIndex++;
+            continue; // Ya fue asignado
+        }
+        const boardB = await queryRunner.manager.findOne(Board, { where: { id: savedNewBoardB.id }});
         if (boardB && (boardB as any)[pos] === null) {
-            const user = promotableGoalScorers[promotedIndex];
             await assignPromotedUser(user, savedNewBoardB.id, pos);
-            promotedIndex++; // Move to the next promotable user
+            assignedUserIds.add(user.id);
+            promotedIndex++;
         }
     }
+    // --- FIN CAMBIO ---
 
     // 4. Handle excess GoalScorers: Add to tail
     if (promotedIndex < promotableGoalScorers.length) {
