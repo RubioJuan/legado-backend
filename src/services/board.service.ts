@@ -3206,7 +3206,21 @@ export const promoteGoalScorerToNextLevelService = async (
     // ✅ CORREGIDO: El tablero SIEMPRE se divide, incluso en Neptuno
       console.log(`[Service - PromoteGoalScorer] Initiating board split for user ${goalScorerData.id}.`);
     const originalBoardEntityToSplit = await localQueryRunner.manager.findOne(Board, { where: { id: originalBoardId } });
+    
+    // NEW CHECK: If the original board is already processed or closed, do not split again.
+    if (originalBoardEntityToSplit && 
+        (originalBoardEntityToSplit.idBoardState === BoardStateNumericId.PROCESS || // If already split/processed (State 2)
+         originalBoardEntityToSplit.idBoardState === BoardStateNumericId.CLOSED)) { // Or if it's already marked as closed (State 4)
+        console.warn(`[Service - PromoteGoalScorer] WARNING: Board ${originalBoardId} is already in state ${originalBoardEntityToSplit.idBoardState}. Skipping redundant board split.`);
+        messageResponse = `El tablero original ${originalBoardId} ya ha sido procesado/cerrado. No se generaron nuevos tableros.`;
+        return { message: messageResponse, status: 200 };
+    }
+
     if (originalBoardEntityToSplit) {
+        // ✅ NUEVO: Marcar el tablero original como PROCESADO (estado 2) inmediatamente
+        console.log(`[Service - PromoteGoalScorer] Marking original board ${originalBoardId} as PROCESS (state 2) before splitting.`);
+        await localQueryRunner.manager.update(Board, originalBoardId, { idBoardState: BoardStateNumericId.PROCESS });
+
         // Always proceed with board split when GoalScorer is being promoted
         console.log(`[Service - PromoteGoalScorer] Proceeding with board split for ${originalBoardId}`);
         
@@ -3756,5 +3770,3 @@ export const unblockHalfArmageddonService = async (
   
   return result;
 };
-
-
