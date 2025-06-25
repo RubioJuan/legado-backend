@@ -14,18 +14,18 @@ import { EntityUser } from "../entities/user.entity";
 
 // Services
 import {
-    promoteGoalScorerToNextLevelService,
-    PromotionServiceResponse
+  promoteGoalScorerToNextLevelService,
+  PromotionServiceResponse
 } from "./board.service";
 
 import {
-    DualRolePromotionResponse,
-    promoteDualRoleGoalScorerService
+  DualRolePromotionResponse,
+  promoteDualRoleGoalScorerService
 } from "./promoteGoalScorerToNextLevelService";
 
 import {
-    resolveGenesisFourthBlockade,
-    resolveGenesisThirdBlockade
+  resolveGenesisFourthBlockade,
+  resolveGenesisThirdBlockade
 } from "./user.service";
 
 // Mock Data (Consider removing if not testing with mocks anymore)
@@ -149,8 +149,9 @@ export const verificatePlayerService = async (
       console.log(`[Service - Verificate] Genesis fourth blockade unlock attempt result: ${unlockResult4.message} (status: ${unlockResult4.status})`);
     }
 
-    // Increment GoalScorer's confirmed balls FIRST
-    const currentConfirmed = goalScorerData.ballsReceivedConfirmed || 0;
+    // Leer el valor actualizado de la base de datos
+    const freshGoalScorer = await localQueryRunner.manager.findOne(EntityUser, { where: { id: goalScorerId } });
+    const currentConfirmed = freshGoalScorer?.ballsReceivedConfirmed || 0;
     const newConfirmed = currentConfirmed + 1;
     console.log(`[Service - Verificate] GoalScorer ${goalScorerData.username} NEW potential ballsReceivedConfirmed: ${newConfirmed}`);
     
